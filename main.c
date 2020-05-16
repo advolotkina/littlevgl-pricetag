@@ -6,19 +6,11 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 
 #define DISP_BUF_SIZE (80*LV_HOR_RES_MAX)
 
-#define CPU_LABEL_COLOR     "FF0000"
-#define MEM_LABEL_COLOR     "0000FF"
-
-static lv_obj_t * win;
-static lv_obj_t * name_label;
-static lv_obj_t * price_label;
-static lv_obj_t * good_pic;
-// static lv_obj_t * specs_list;
-#define PC_FILES    1 
 typedef  FILE * pc_file_t;
 static lv_fs_res_t pcfs_open(lv_fs_drv_t * drv, void * file_p, const char * fn, lv_fs_mode_t mode);
 static lv_fs_res_t pcfs_close(lv_fs_drv_t * drv, void * file_p);
@@ -26,9 +18,9 @@ static lv_fs_res_t pcfs_read(lv_fs_drv_t * drv, void * file_p, void * buf, uint3
 static lv_fs_res_t pcfs_seek(lv_fs_drv_t * drv, void * file_p, uint32_t pos);
 static lv_fs_res_t pcfs_tell(lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p);
 
+
 int main(int argc, char** argv)
 {
-    char buf_long[256];
     /*LittlevGL init*/
     lv_init();
 
@@ -69,58 +61,160 @@ int main(int argc, char** argv)
     pcfs_drv.tell_cb = pcfs_tell;
     lv_fs_drv_register(&pcfs_drv);
 
-    win = lv_win_create(lv_disp_get_scr_act(NULL), NULL);
-    lv_win_set_title(win, "Smart price tag");    
-    lv_win_set_layout(win, LV_LAYOUT_PRETTY);
 
-    name_label = lv_label_create(win, NULL);
-    lv_label_set_recolor(name_label, true);
-    lv_obj_align(name_label, NULL, LV_ALIGN_OUT_TOP_LEFT, 0, 0);
+    lv_theme_t * th = lv_theme_night_init(210, &jost_28);     //Set a HUE value and a Font for the Night Theme
+    lv_theme_set_current(th);   
 
-    price_label = lv_label_create(win, NULL);
-    lv_label_set_recolor(name_label, true);
-    lv_obj_align(name_label, NULL, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);
+    // Считать количество товаров из файла
+    FILE *fp;
+    long lSize;
+    char *buffer;
 
-    sprintf(buf_long, "%s", argv[1]);
-    lv_label_set_text(name_label, buf_long);
-    sprintf(buf_long, "%s $$", argv[2]);
-    lv_label_set_text(price_label, buf_long);
+    fp = fopen ( "/opt/goods/count" , "rb" );
+    if( !fp ) perror("/opt/goods/count"),exit(1);
 
-    good_pic = lv_img_create(win, NULL);
-    lv_img_set_src(good_pic, "P/opt/goods/good1/good.bin");
-    lv_obj_set_pos(good_pic, 150, 200);      /*Set the positions*/
-    lv_obj_set_drag(good_pic, true);
-    // /*Create a scroll bar style*/
-    // static lv_style_t style_sb;
-    // lv_style_copy(&style_sb, &lv_style_plain);
-    // style_sb.body.main_color = LV_COLOR_BLACK;
-    // style_sb.body.grad_color = LV_COLOR_BLACK;
-    // style_sb.body.border.color = LV_COLOR_WHITE;
-    // style_sb.body.border.width = 1;
-    // style_sb.body.border.opa = LV_OPA_70;
-    // style_sb.body.radius = LV_RADIUS_CIRCLE;
-    // style_sb.body.opa = LV_OPA_60;
-    // style_sb.body.padding.right = 3;
-    // style_sb.body.padding.bottom = 3;
-    // style_sb.body.padding.inner = 8;        /*Scrollbar width*/
+    fseek( fp , 0L , SEEK_END);
+    lSize = ftell( fp );
+    rewind( fp );
 
-    // specs_list =  lv_page_create(win, NULL);
-    // lv_obj_set_size(specs_list, 150, 200);
-    // lv_obj_align(specs_list, NULL, LV_ALIGN_OUT_BOTTOM_RIGHT, 0, 0);
-    // lv_page_set_style(specs_list, LV_PAGE_STYLE_SB, &style_sb);           /*Set the scrollbar style*/
+    /* allocate memory for entire content */
+    buffer = calloc( 1, lSize+1 );
+    if( !buffer ) fclose(fp),fputs("memory alloc fails",stderr),exit(1);
 
-    // /*Create a label on the page*/
-    // lv_obj_t * label = lv_label_create(specs_list, NULL);
-    // lv_label_set_long_mode(label, LV_LABEL_LONG_BREAK);            /*Automatically break long lines*/
-    // lv_obj_set_width(label, lv_page_get_fit_width(specs_list));          /*Set the label width to max value to not show hor. scroll bars*/
-    // lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit,\n"
-    //                          "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n"
-    //                          "Ut enim ad minim veniam, quis nostrud exercitation ullamco\n"
-    //                          "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure\n"
-    //                          "dolor in reprehenderit in voluptate velit esse cillum dolore\n"
-    //                          "eu fugiat nulla pariatur.\n"
-    //                          "Excepteur sint occaecat cupidatat non proident, sunt in culpa\n"
-    //                          "qui officia deserunt mollit anim id est laborum.");
+    /* copy the file into the buffer */
+    if( 1!=fread( buffer , lSize, 1 , fp) )
+      fclose(fp),free(buffer),fputs("entire read fails",stderr),exit(1);
+
+    int count = atoi(buffer);
+
+    fclose(fp);
+    free(buffer);
+
+    lv_obj_t *tab[count];
+    lv_obj_t *page[count];
+    lv_obj_t *name_label[count];
+    lv_obj_t *price_label[count];
+    lv_obj_t *specs[count];
+    lv_obj_t *good_pic[count];
+
+
+    int size = 100;
+    char *path;
+    char *buf_long;
+    path = malloc(size);
+
+    lv_obj_t *tabview;
+    tabview = lv_tabview_create(lv_scr_act(), NULL);
+
+    static lv_style_t style;
+    lv_style_copy(&style, &lv_style_plain);
+    style.text.color = LV_COLOR_WHITE;
+    style.text.font = &jost_bold_40;
+
+    for (int i = 0; i < count; i++){
+        tab[i] = lv_tabview_add_tab(tabview, "Prod");
+        lv_obj_align(tab[i], NULL, LV_ALIGN_CENTER, 0, 0);
+        
+        good_pic[i] = lv_img_create(tab[i], NULL);
+        memset(path, 0, size);
+        sprintf(path, "P/opt/goods/good%d/good.bin", i + 1);
+        lv_img_set_src(good_pic[i], path);
+        
+        page[i] = lv_page_create(tab[i], NULL);
+        lv_obj_set_size(page[i], 370, 370);
+        lv_obj_align(page[i], NULL, LV_ALIGN_IN_TOP_RIGHT, 0, 0); 
+
+        name_label[i] = lv_label_create(page[i], NULL);
+        lv_label_set_style(name_label[i], LV_LABEL_STYLE_MAIN, &style);
+        lv_label_set_long_mode(name_label[i], LV_LABEL_LONG_BREAK);
+        lv_obj_set_width(name_label[i], 340); 
+
+        price_label[i] = lv_label_create(page[i], NULL);
+        lv_label_set_long_mode(price_label[i], LV_LABEL_LONG_BREAK);
+        lv_obj_set_width(price_label[i], 340); 
+        lv_obj_align(price_label[i], NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
+
+        specs[i] = lv_label_create(tab[i], NULL);
+        lv_label_set_long_mode(specs[i], LV_LABEL_LONG_BREAK); 
+        lv_label_set_recolor(specs[i], true);
+        lv_obj_set_width(specs[i], 740);
+        lv_obj_align(specs[i], NULL, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_pos(specs[i], 0, 410);
+
+        memset(path, 0, size);
+        sprintf(path, "/opt/goods/good%d/name", i + 1);
+
+        fp = fopen ( path , "rb" );
+        if( !fp ) perror(path),exit(1);
+
+        fseek( fp , 0L , SEEK_END);
+        lSize = ftell( fp );
+        rewind( fp );
+
+        /* allocate memory for entire content */
+        buffer = calloc( 1, lSize+1 );
+        if( !buffer ) fclose(fp),fputs("memory alloc fails",stderr),exit(1);
+
+        /* copy the file into the buffer */
+        if( 1!=fread( buffer , lSize, 1 , fp) )
+          fclose(fp),free(buffer),fputs("entire read fails",stderr),exit(1);
+
+        lv_label_set_text(name_label[i], buffer);
+
+        fclose(fp);
+        free(buffer);
+
+        memset(path, 0, size);
+        sprintf(path, "/opt/goods/good%d/price", i + 1);
+
+        fp = fopen ( path , "rb" );
+        if( !fp ) perror(path),exit(1);
+
+        fseek( fp , 0L , SEEK_END);
+        lSize = ftell( fp );
+        rewind( fp );
+
+        /* allocate memory for entire content */
+        buffer = calloc( 1, lSize+1 );
+        if( !buffer ) fclose(fp),fputs("memory alloc fails",stderr),exit(1);
+
+        /* copy the file into the buffer */
+        if( 1!=fread( buffer , lSize, 1 , fp) )
+          fclose(fp),free(buffer),fputs("entire read fails",stderr),exit(1);
+
+        buf_long = calloc( 1, lSize + 11);
+        sprintf(buf_long, "Цена: %s", buffer);
+        lv_label_set_text(price_label[i], buf_long);
+
+        fclose(fp);
+        free(buffer);
+        free(buf_long);
+
+        memset(path, 0, size);
+        sprintf(path, "/opt/goods/good%d/specs", i + 1);
+
+        fp = fopen ( path , "rb" );
+        if( !fp ) perror(path),exit(1);
+
+        fseek( fp , 0L , SEEK_END);
+        lSize = ftell( fp );
+        rewind( fp );
+
+        /* allocate memory for entire content */
+        buffer = calloc( 1, lSize+1 );
+        if( !buffer ) fclose(fp),fputs("memory alloc fails",stderr),exit(1);
+
+        /* copy the file into the buffer */
+        if( 1!=fread( buffer , lSize, 1 , fp) )
+          fclose(fp),free(buffer),fputs("entire read fails",stderr),exit(1);
+
+        lv_label_set_text(specs[i], buffer);
+
+        fclose(fp);
+        free(buffer);
+    }
+    free(path);
+
 
     /*Handle LitlevGL tasks (tickless mode)*/
     while(1) {

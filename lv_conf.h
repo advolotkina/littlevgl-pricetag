@@ -20,8 +20,8 @@
  *====================*/
 
 /* Maximal horizontal and vertical resolution to support by the library.*/
-#define LV_HOR_RES_MAX          (480)
-#define LV_VER_RES_MAX          (272)
+#define LV_HOR_RES_MAX          (800)
+#define LV_VER_RES_MAX          (480)
 
 /* Color depth:
  * - 1:  1 byte per pixel
@@ -238,7 +238,7 @@ typedef void * lv_indev_drv_user_data_t;            /*Type of user data in the i
 #define LV_USE_THEME_TEMPL      0   /*Just for test*/
 #define LV_USE_THEME_DEFAULT    0   /*Built mainly from the built-in styles. Consumes very few RAM*/
 #define LV_USE_THEME_ALIEN      0   /*Dark futuristic theme*/
-#define LV_USE_THEME_NIGHT      0   /*Dark elegant theme*/
+#define LV_USE_THEME_NIGHT      1   /*Dark elegant theme*/
 #define LV_USE_THEME_MONO       0   /*Mono color theme for monochrome displays*/
 #define LV_USE_THEME_MATERIAL   0   /*Flat theme with bold colors and light shadows*/
 #define LV_USE_THEME_ZEN        0   /*Peaceful, mainly light theme */
@@ -259,7 +259,12 @@ typedef void * lv_indev_drv_user_data_t;            /*Type of user data in the i
 #define LV_FONT_ROBOTO_12    0
 #define LV_FONT_ROBOTO_16    0
 #define LV_FONT_ROBOTO_22    0
-#define LV_FONT_ROBOTO_28    1
+#define LV_FONT_ROBOTO_28    0
+#define JOST_28				 1
+#define COMFORTAA_40		 0
+#define COMFORTAA_BOLD_32    0
+#define JOST_BOLD_32		 0
+#define JOST_BOLD_40		 1
 
 /*Pixel perfect monospace font
  * http://pelulamu.net/unscii/ */
@@ -271,10 +276,10 @@ typedef void * lv_indev_drv_user_data_t;            /*Type of user data in the i
  * #define LV_FONT_CUSTOM_DECLARE LV_FONT_DECLARE(my_font_1) \
  *                                LV_FONT_DECLARE(my_font_2)
  */
-#define LV_FONT_CUSTOM_DECLARE
+// #define LV_FONT_CUSTOM_DECLARE LV_FONT_DECLARE(JOST_28)
 
 /*Always set a default font from the built-in fonts*/
-#define LV_FONT_DEFAULT        &lv_font_roboto_28
+#define LV_FONT_DEFAULT        &jost_28
 
 /*Declare the type of the user data of fonts (can be e.g. `void *`, `int`, `struct`)*/
 typedef void * lv_font_user_data_t;
